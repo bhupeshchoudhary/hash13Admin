@@ -9,31 +9,96 @@ import {
   query,
   orderBy,
   serverTimestamp,
-  where
+  where,
+  writeBatch
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { db, storage } from './firebase';
+import { db, storage, handleFirestoreError } from './firebase';
 import { Course, NewCourse, CoursesResponse, CourseResponse } from '@/types/courses';
 import { v4 as uuidv4 } from 'uuid';
 
 const COLLECTION_NAME = 'courses';
 
+// Helper function to clean data before sending to Firestore
+const cleanCourseData = (data: any) => {
+  const cleaned: any = {};
+  
+  for (const [key, value] of Object.entries(data)) {
+    // Skip undefined values and functions
+    if (value !== undefined && typeof value !== 'function') {
+      // Convert empty strings to empty string for optional fields (don't use null)
+      if (typeof value === 'string' && value === '' && 
+          ['paymentLink', 'backgroundImage', 'certificateImage'].includes(key)) {
+        cleaned[key] = '';
+      } else {
+        cleaned[key] = value;
+      }
+    }
+  }
+  
+  return cleaned;
+};
+
 export class CourseService {
   // Create a new course
   static async createCourse(courseData: NewCourse): Promise<CourseResponse> {
     try {
-      const courseWithId = {
+      const courseId = uuidv4();
+      
+      const courseWithMetadata = {
         ...courseData,
-        _id: uuidv4(),
+        _id: courseId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        status: courseData.status || 'draft'
+        status: courseData.status || 'draft',
+        // Ensure these fields are numbers
+        rating: Number(courseData.rating) || 0,
+        totalRatings: Number(courseData.totalRatings) || 0,
+        enrolledStudents: Number(courseData.enrolledStudents) || 0,
+        price: Number(courseData.price) || 0,
+        originalPrice: Number(courseData.originalPrice) || 0,
+        // Ensure arrays are properly initialized
+        learningOutcomes: Array.isArray(courseData.learningOutcomes) ? courseData.learningOutcomes : [],
+        features: Array.isArray(courseData.features) ? courseData.features : [],
+        skills: Array.isArray(courseData.skills) ? courseData.skills : [],
+        requirements: Array.isArray(courseData.requirements) ? courseData.requirements : [],
+        module: Array.isArray(courseData.module) ? courseData.module : [],
+        highlights: Array.isArray(courseData.highlights) ? courseData.highlights : [],
+        project: Array.isArray(courseData.project) ? courseData.project : [],
+        programFor: Array.isArray(courseData.programFor) ? courseData.programFor : [],
+        // Ensure strings are not undefined
+        title: courseData.title || '',
+        slug: courseData.slug || '',
+        shortDescription: courseData.shortDescription || '',
+        category: courseData.category || '',
+        level: courseData.level || 'beginner',
+        language: courseData.language || '',
+        duration: courseData.duration || '',
+        hours: courseData.hours || '',
+        programBy: courseData.programBy || 'Admin',
+        lastUpdated: courseData.lastUpdated || new Date().toISOString(),
+        paymentLink: courseData.paymentLink || '',
+        backgroundImage: courseData.backgroundImage || '',
+        certificateImage: courseData.certificateImage || '',
+        // Ensure toolsData has proper structure
+        toolsData: courseData.toolsData || {
+          sectionTitle: '',
+          category: '',
+          toolsCount: '0',
+          displayImage: '',
+          tools: []
+        }
       };
 
-      const docRef = await addDoc(collection(db, COLLECTION_NAME), courseWithId);
+      // Clean the data before sending
+      const cleanedData = cleanCourseData(courseWithMetadata);
+      
+      console.log('Creating course with cleaned data:', cleanedData);
+      
+      const docRef = await addDoc(collection(db, COLLECTION_NAME), cleanedData);
       
       const createdCourse: Course = {
-        ...courseWithId,
+        ...cleanedData,
         createdAt: new Date(),
         updatedAt: new Date()
       } as Course;
@@ -43,9 +108,11 @@ export class CourseService {
         data: createdCourse
       };
     } catch (error: any) {
+      console.error('Error creating course:', error);
+      const errorMessage = handleFirestoreError(error);
       return {
         success: false,
-        error: error.message || 'Failed to create course'
+        error: errorMessage
       };
     }
   }
@@ -61,8 +128,8 @@ export class CourseService {
         const data = doc.data();
         courses.push({
           ...data,
-          createdAt: data.createdAt?.toDate(),
-          updatedAt: data.updatedAt?.toDate()
+          createdAt: data.createdAt?.toDate() || new Date(),
+          updatedAt: data.updatedAt?.toDate() || new Date()
         } as Course);
       });
 
@@ -71,9 +138,11 @@ export class CourseService {
         data: courses
       };
     } catch (error: any) {
+      console.error('Error fetching courses:', error);
+      const errorMessage = handleFirestoreError(error);
       return {
         success: false,
-        error: error.message || 'Failed to fetch courses'
+        error: errorMessage
       };
     }
   }
@@ -95,8 +164,8 @@ export class CourseService {
       const data = doc.data();
       const course: Course = {
         ...data,
-        createdAt: data.createdAt?.toDate(),
-        updatedAt: data.updatedAt?.toDate()
+        createdAt: data.createdAt?.toDate() || new Date(),
+        updatedAt: data.updatedAt?.toDate() || new Date()
       } as Course;
 
       return {
@@ -104,9 +173,11 @@ export class CourseService {
         data: course
       };
     } catch (error: any) {
+      console.error('Error fetching course:', error);
+      const errorMessage = handleFirestoreError(error);
       return {
         success: false,
-        error: error.message || 'Failed to fetch course'
+        error: errorMessage
       };
     }
   }
@@ -125,12 +196,24 @@ export class CourseService {
       }
 
       const docRef = querySnapshot.docs[0].ref;
+      
       const updateData = {
         ...courseData,
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
+        // Ensure numeric fields are properly typed
+        ...(courseData.rating !== undefined && { rating: Number(courseData.rating) }),
+        ...(courseData.totalRatings !== undefined && { totalRatings: Number(courseData.totalRatings) }),
+        ...(courseData.enrolledStudents !== undefined && { enrolledStudents: Number(courseData.enrolledStudents) }),
+        ...(courseData.price !== undefined && { price: Number(courseData.price) }),
+        ...(courseData.originalPrice !== undefined && { originalPrice: Number(courseData.originalPrice) }),
       };
 
-      await updateDoc(docRef, updateData);
+      // Clean the data before sending
+      const cleanedData = cleanCourseData(updateData);
+      
+      console.log('Updating course with cleaned data:', cleanedData);
+
+      await updateDoc(docRef, cleanedData);
 
       const updatedCourse: Course = {
         ...courseData,
@@ -143,9 +226,11 @@ export class CourseService {
         data: updatedCourse
       };
     } catch (error: any) {
+      console.error('Error updating course:', error);
+      const errorMessage = handleFirestoreError(error);
       return {
         success: false,
-        error: error.message || 'Failed to update course'
+        error: errorMessage
       };
     }
   }
@@ -170,27 +255,46 @@ export class CourseService {
         success: true
       };
     } catch (error: any) {
+      console.error('Error deleting course:', error);
+      const errorMessage = handleFirestoreError(error);
       return {
         success: false,
-        error: error.message || 'Failed to delete course'
+        error: errorMessage
       };
     }
   }
 
-  // Upload image
+  // Upload image with better error handling
   static async uploadImage(file: File, path: string): Promise<{ success: boolean; url?: string; error?: string }> {
     try {
-      const filename = `${Date.now()}_${file.name}`;
+      // Validate file
+      if (!file) {
+        return { success: false, error: 'No file provided' };
+      }
+      
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        return { success: false, error: 'File size must be less than 5MB' };
+      }
+      
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        return { success: false, error: 'Only JPEG, PNG, and WebP images are allowed' };
+      }
+      
+      const filename = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
       const storageRef = ref(storage, `${path}/${filename}`);
       
-      await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(storageRef);
+      console.log('Uploading image:', filename);
+      
+      const snapshot = await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
       
       return {
         success: true,
         url: downloadURL
       };
     } catch (error: any) {
+      console.error('Error uploading image:', error);
       return {
         success: false,
         error: error.message || 'Failed to upload image'
@@ -208,6 +312,7 @@ export class CourseService {
         success: true
       };
     } catch (error: any) {
+      console.error('Error deleting image:', error);
       return {
         success: false,
         error: error.message || 'Failed to delete image'
