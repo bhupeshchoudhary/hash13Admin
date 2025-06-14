@@ -1,6 +1,6 @@
 {
+  "/not-found": "app/not-found.js",
   "/admin/courses/page": "app/admin/courses/page.js",
   "/admin/courses/[id]/edit/page": "app/admin/courses/[id]/edit/page.js",
-  "/admin/courses/new/page": "app/admin/courses/new/page.js",
-  "/admin/page": "app/admin/page.js"
+  "/admin/courses/new/page": "app/admin/courses/new/page.js"
 }
