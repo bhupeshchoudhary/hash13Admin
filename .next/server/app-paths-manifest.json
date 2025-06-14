@@ -1,6 +1,10 @@
 {
   "/not-found": "app/not-found.js",
-  "/admin/courses/page": "app/admin/courses/page.js",
+  "/api/upload/route": "app/api/upload/route.js",
   "/admin/courses/[id]/edit/page": "app/admin/courses/[id]/edit/page.js",
-  "/admin/courses/new/page": "app/admin/courses/new/page.js"
+  "/admin/courses/page": "app/admin/courses/page.js",
+  "/admin/page": "app/admin/page.js",
+  "/admin/courses/new/page": "app/admin/courses/new/page.js",
+  "/admin/images/page": "app/admin/images/page.js",
+  "/admin/settings/page": "app/admin/settings/page.js"
 }

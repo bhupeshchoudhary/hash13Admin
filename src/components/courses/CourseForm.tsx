@@ -82,20 +82,32 @@ export default function CourseForm({ initialData }: CourseFormProps) {
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
+  
+    console.log('File selected for upload:', file);
+  
     setImageUploading(true);
+    
     try {
+      console.log('Calling CourseService.uploadImage...');
       const response = await CourseService.uploadImage(file, 'courses');
+      console.log('Upload response:', response);
+      
       if (response.success && response.url) {
         setValue('backgroundImage', response.url);
         toast.success('Image uploaded successfully');
+        console.log('Image URL set in form:', response.url);
       } else {
+        console.error('Upload failed:', response.error);
         toast.error(response.error || 'Failed to upload image');
       }
     } catch (error) {
+      console.error('Upload error in component:', error);
       toast.error('Failed to upload image');
+    } finally {
+      setImageUploading(false);
+      // Clear the input so the same file can be selected again if needed
+      event.target.value = '';
     }
-    setImageUploading(false);
   };
 
   const handleArrayField = (

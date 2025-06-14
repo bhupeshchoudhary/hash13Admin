@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
-import { getStorage, connectStorageEmulator } from "firebase/storage";
+import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCHdeJBSCOQCAQuWi1o3g327vbp-ygKQyQ",
@@ -14,25 +14,55 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Cloud Firestore and get a reference to the service
+// Initialize services
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 
-// Error handling helper
-export const handleFirestoreError = (error: any) => {
+// Test Firebase initialization
+console.log('Firebase initialized successfully');
+console.log('Storage bucket:', firebaseConfig.storageBucket);
+
+// Enhanced error handling helper
+export const handleFirestoreError = (error: any): string => {
   console.error('Firestore Error:', error);
   
-  if (error.code === 'unavailable') {
-    console.warn('Firestore is temporarily unavailable. Please check your internet connection.');
-  } else if (error.code === 'permission-denied') {
-    console.warn('Permission denied. Please check Firestore security rules.');
-  } else if (error.code === 'not-found') {
-    console.warn('Document not found.');
-  } else if (error.code === 'already-exists') {
-    console.warn('Document already exists.');
+  // Handle specific error codes
+  switch (error.code) {
+    case 'unavailable':
+      return 'Service temporarily unavailable. Please check your internet connection.';
+    case 'permission-denied':
+      return 'Permission denied. Please check your access rights.';
+    case 'not-found':
+      return 'Document not found.';
+    case 'already-exists':
+      return 'Document already exists.';
+    case 'invalid-argument':
+      return 'Invalid data provided.';
+    case 'failed-precondition':
+      return 'Operation failed due to precondition.';
+    case 'aborted':
+      return 'Operation was aborted.';
+    case 'out-of-range':
+      return 'Document ID out of range.';
+    case 'unauthenticated':
+      return 'Authentication required.';
+    case 'resource-exhausted':
+      return 'Resource quota exceeded.';
+    case 'cancelled':
+      return 'Operation was cancelled.';
+    case 'data-loss':
+      return 'Data loss detected.';
+    case 'unknown':
+      return 'Unknown error occurred.';
+    case 'internal':
+      return 'Internal server error.';
+    case 'unimplemented':
+      return 'Operation not implemented.';
+    case 'deadline-exceeded':
+      return 'Operation deadline exceeded.';
+    default:
+      return error.message || 'An unexpected error occurred';
   }
-  
-  return error.message || 'An unknown error occurred';
 };
 
 export default app;

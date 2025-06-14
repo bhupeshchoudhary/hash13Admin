@@ -2,14 +2,16 @@
 
 import { Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { X, Home, BookOpen, Settings, Users, BarChart3 } from 'lucide-react';
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { X, Home, BookOpen, Settings, Users, BarChart3, Image as ImageIcon } from 'lucide-react';
 
 const navigation = [
   { name: 'Dashboard', href: '/admin', icon: Home },
   { name: 'Courses', href: '/admin/courses', icon: BookOpen },
+  { name: 'Images', href: '/admin/images', icon: ImageIcon }, // Add this line
   { name: 'Students', href: '/admin/students', icon: Users },
   { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
